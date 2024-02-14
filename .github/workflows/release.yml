@@ -21,9 +21,7 @@ jobs:
       uses: actions/checkout@v2
 
     - name: Build Binary
-      run: |
-        go build -o proxyfix ./...
-        chmod +x proxyfix
+      run: make build-ci
 
     - name: Create Release
       id: create_release
@@ -36,13 +34,24 @@ jobs:
         draft: false
         prerelease: false
 
-    - name: Upload Release Asset
-      id: upload-release-asset
+    - name: Upload Release Asset AMD64
+      id: upload-release-asset-amd64
       uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./proxyfix
-        asset_name: proxyfix-linux-amd64
+        asset_path: ./build/proxy-fix-linux-amd64
+        asset_name: proxy-fix-linux-amd64
+        asset_content_type: application/octet-stream
+
+    - name: Upload Release Asset ARM64
+      id: upload-release-asset-arm64
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./build/proxy-fix-linux-arm64
+        asset_name: proxy-fix-linux-arm64
         asset_content_type: application/octet-stream

@@ -1,36 +1,17 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
-	"io"
 	"net"
-	"net/http"
 	"os"
 	"os/exec"
-	"regexp"
-	"time"
 )
 
-func GetFreePort() (port int, err error) {
-	var a *net.TCPAddr
-	if a, err = net.ResolveTCPAddr("tcp", "localhost:0"); err == nil {
-		var l *net.TCPListener
-		if l, err = net.ListenTCP("tcp", a); err == nil {
-			defer l.Close()
-			return l.Addr().(*net.TCPAddr).Port, nil
-		}
-	}
-	return
-}
-
 var outPort int
-var firstConn = true
-var reg *regexp.Regexp = regexp.MustCompile("[^a-zA-Z0-9-]+")
 
 func init() {
 	var err error
-	outPort, err = GetFreePort()
+	outPort, err = getFreePort()
 	if err != nil {
 		panic("Can't get free port")
 	}
@@ -58,16 +39,16 @@ func main() {
 	if port == "" {
 		port = "8080" // Default to port 8080 if no PORT env variable is set
 	}
-	// Start the proxy server on port 8080
-	err := startProxy("127.0.0.1:" + port)
+	err := startProxy("0.0.0.0:" + port)
 	if err != nil {
 		panic(err)
 	}
 }
 
-// ... (rest of the code remains the same)
-
 func startProxy(address string) error {
+	proxy := Proxy{
+		DialTarget: fmt.Sprintf("localhost:%d", outPort),
+	}
 	listener, err := net.Listen("tcp", address)
 	if err != nil {
 		return err
@@ -82,59 +63,6 @@ func startProxy(address string) error {
 			continue
 		}
 
-		go handleConnection(conn)
-	}
-}
-
-func handleConnection(clientConn net.Conn) {
-	defer clientConn.Close()
-
-	clientReader := bufio.NewReader(clientConn)
-
-	// Read the request from the client
-	request, err := http.ReadRequest(clientReader)
-	if err != nil {
-		fmt.Printf("Error reading request: %v\n", err)
-		return
-	}
-
-	// Filter invalid headers
-	filterInvalidHeaders(request.Header)
-
-	// Connect to the destination server
-	outConn := fmt.Sprintf("localhost:%d", outPort)
-	retries := 0
-retry:
-	destConn, err := net.Dial("tcp", outConn)
-	if err != nil {
-		if firstConn && retries < 20 {
-			time.Sleep(time.Second * 1)
-			retries += 1
-			goto retry
-		}
-		fmt.Printf("Error connecting to destination: %v\n", err)
-		return
-	}
-	defer destConn.Close()
-
-	// Write the modified request to the destination
-	err = request.Write(destConn)
-	if err != nil {
-		fmt.Printf("Error writing request to destination: %v\n", err)
-		return
-	}
-
-	// Copy the response from the destination to the client
-	io.Copy(clientConn, destConn)
-	firstConn = false
-}
-
-func filterInvalidHeaders(headers http.Header) {
-	// Define invalid headers
-
-	for header := range headers {
-		if reg.FindString(header) != "" {
-			delete(headers, header)
-		}
+		go proxy.handleConnection(conn)
 	}
 }
