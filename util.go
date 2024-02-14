@@ -7,10 +7,10 @@ import (
 	"time"
 )
 
-var reg *regexp.Regexp = regexp.MustCompile("[^a-zA-Z0-9-]+")
-
 const MAX_RETRY = 20
 const WAIT_RETRY = time.Second * 1
+
+var invalidHeaderRegex = regexp.MustCompile("[^a-zA-Z0-9-]+")
 
 func getFreePort() (port int, err error) {
 	var a *net.TCPAddr
@@ -26,7 +26,7 @@ func getFreePort() (port int, err error) {
 
 func filterInvalidHeaders(headers http.Header) {
 	for header := range headers {
-		if reg.MatchString(header) {
+		if invalidHeaderRegex.MatchString(header) {
 			delete(headers, header)
 		}
 	}

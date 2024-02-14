@@ -73,7 +73,6 @@ func handleHTTP(destConn net.Conn, clientConn net.Conn) {
 }
 
 func (proxy *Proxy) handleDial() (destConn net.Conn, err error) {
-	// outConn := fmt.Sprintf("localhost:%d", proxy.outPort)
 	retries := 0
 retry:
 	destConn, err = net.Dial("tcp", proxy.DialTarget)

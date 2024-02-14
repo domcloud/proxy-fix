@@ -30,7 +30,6 @@ func init() {
 		}
 
 		fmt.Printf("Started process %s with PID %d\n", os.Args[1], cmd.Process.Pid)
-
 	}
 }
 
