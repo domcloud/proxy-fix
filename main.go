@@ -20,6 +20,7 @@ func init() {
 		cmd := exec.Command(os.Args[1], os.Args[2:]...)
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
+		cmd.Env = os.Environ()
 		cmd.Env = append(cmd.Env, fmt.Sprintf("PORT=%d", outPort))
 
 		// Start the specified command
