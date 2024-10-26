@@ -42,31 +42,31 @@ func getPidFile() string {
 	return filepath.Join(os.Getenv("HOME"), "tmp", "app.pid")
 }
 
-func checkExistingProcess() (int, error) {
+func checkExistingProcess() (port int, pid int, err error) {
 	data, err := os.ReadFile(getPidFile())
 	if err != nil {
-		return 0, err
+		return 0, 0, err
 	}
 
 	fields := strings.Split(string(data), ":")
 	if len(fields) != 2 {
-		return 0, fmt.Errorf("invalid pid/port file format")
+		return 0, 0, fmt.Errorf("invalid pid/port file format")
 	}
 
-	pid, err := strconv.Atoi(fields[0])
+	pid, err = strconv.Atoi(fields[0])
 	if err != nil {
-		return 0, fmt.Errorf("invalid PID format: %v", err)
+		return 0, 0, fmt.Errorf("invalid PID format: %v", err)
 	}
 
-	port, err := strconv.Atoi(fields[1])
+	port, err = strconv.Atoi(fields[1])
 	if err != nil {
-		return 0, fmt.Errorf("invalid port format: %v", err)
+		return 0, 0, fmt.Errorf("invalid port format: %v", err)
 	}
 
 	if processExists(pid) {
-		return port, nil
+		return port, pid, nil
 	}
-	return 0, fmt.Errorf("no running process found")
+	return 0, 0, fmt.Errorf("no running process found")
 }
 
 func processExists(pid int) bool {
@@ -78,9 +78,27 @@ func processExists(pid int) bool {
 	return err == nil
 }
 
+func processKill(pid int) bool {
+	process, err := os.FindProcess(pid)
+	if err != nil {
+		return false
+	}
+	err = process.Signal(syscall.SIGKILL)
+	return err == nil
+}
+
 func isPortListening(port int) bool {
+	retries := 0
+retry:
 	conn, err := net.Dial("tcp", fmt.Sprintf("127.0.0.1:%d", port))
 	if err != nil {
+		if retries < MAX_RETRY {
+			retries += 1
+			fmt.Printf("Retrying to connect for %d-th time\n", retries)
+			time.Sleep(WAIT_RETRY)
+			goto retry
+		}
+		fmt.Printf("Error connecting to destination: %v\n", err)
 		return false
 	}
 	conn.Close()

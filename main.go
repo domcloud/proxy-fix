@@ -13,11 +13,17 @@ var outPort int
 
 func init() {
 	var err error
+	var pid int
 
-	outPort, err = checkExistingProcess()
-	if err == nil && isPortListening(outPort) {
-		fmt.Printf("Process is already running on port %d\n", outPort)
-		return
+	outPort, pid, err = checkExistingProcess()
+	if err == nil {
+		if isPortListening(outPort) {
+			fmt.Printf("Process is already running on port %d\n", outPort)
+			return
+		} else {
+			fmt.Printf("Killing stale process %d  \n", pid)
+			processKill(pid)
+		}
 	}
 
 	// No existing process found or not listening, start a new one
@@ -45,7 +51,7 @@ func init() {
 				fmt.Printf("Error starting command: %v\n", err)
 				os.Exit(1)
 			}
-			pid, err := strconv.Atoi(out.String())
+			pid, err = strconv.Atoi(out.String())
 			if nil != err {
 				fmt.Printf("Error starting command: %v\n", err)
 				os.Exit(1)
@@ -69,7 +75,7 @@ func init() {
 				fmt.Printf("Error starting command: %v\n", err)
 				os.Exit(1)
 			}
-			pid := cmd.Process.Pid
+			pid = cmd.Process.Pid
 			fmt.Printf("Started process %s with PID %d\n", args[1], pid)
 		}
 

@@ -11,4 +11,4 @@ build-ci:
 	cd ./build && tar -zcvf ./proxy-fix-linux-arm64.tar.gz ./proxy-fix-linux-arm64
 
 run:
-	env PORT=8080 go run . bun ./test/app.ts
+	env PORT=8080 NOHUP=1 go run . bun ./test/app.ts
