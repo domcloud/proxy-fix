@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"strconv"
+	"syscall"
 )
 
 var outPort int
@@ -44,6 +45,10 @@ func init() {
 			cmd := exec.Command("bash", "-c", cmdd)
 			cmd.Stdout = &out
 			cmd.Stderr = &stderr
+			cmd.SysProcAttr = &syscall.SysProcAttr{
+				Setpgid: true,
+				Pgid:    0,
+			}
 			cmd.Env = os.Environ()
 			cmd.Env = append(cmd.Env, fmt.Sprintf("PORT=%d", outPort))
 			err = cmd.Run()
