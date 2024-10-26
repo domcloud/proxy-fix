@@ -1,9 +1,15 @@
 package main
 
 import (
+	"fmt"
 	"net"
 	"net/http"
+	"os"
+	"path/filepath"
 	"regexp"
+	"strconv"
+	"strings"
+	"syscall"
 	"time"
 )
 
@@ -30,4 +36,68 @@ func filterInvalidHeaders(headers http.Header) {
 			delete(headers, header)
 		}
 	}
+}
+
+func getPidFile() string {
+	return filepath.Join(os.Getenv("HOME"), "tmp", "app.pid")
+}
+
+func checkExistingProcess() (int, error) {
+	data, err := os.ReadFile(getPidFile())
+	if err != nil {
+		return 0, err
+	}
+
+	fields := strings.Split(string(data), ":")
+	if len(fields) != 2 {
+		return 0, fmt.Errorf("invalid pid/port file format")
+	}
+
+	pid, err := strconv.Atoi(fields[0])
+	if err != nil {
+		return 0, fmt.Errorf("invalid PID format: %v", err)
+	}
+
+	port, err := strconv.Atoi(fields[1])
+	if err != nil {
+		return 0, fmt.Errorf("invalid port format: %v", err)
+	}
+
+	if processExists(pid) {
+		return port, nil
+	}
+	return 0, fmt.Errorf("no running process found")
+}
+
+func processExists(pid int) bool {
+	process, err := os.FindProcess(pid)
+	if err != nil {
+		return false
+	}
+	err = process.Signal(syscall.Signal(0))
+	return err == nil
+}
+
+func isPortListening(port int) bool {
+	conn, err := net.Dial("tcp", fmt.Sprintf("127.0.0.1:%d", port))
+	if err != nil {
+		return false
+	}
+	conn.Close()
+	return true
+}
+
+func writePidPortFile(pid, port int) {
+	err := os.WriteFile(getPidFile(), []byte(fmt.Sprintf("%d:%d", pid, port)), 0644)
+	if err != nil {
+		fmt.Printf("Failed to write PID/port file: %v\n", err)
+	}
+}
+
+func generateBgCmd(name string, arg ...string) string {
+	return fmt.Sprintf(
+		"nohup %s %s < /dev/null &>$HOME/tmp/app.log & echo -n $! | awk '/[0-9]+$/{ printf $0 }'",
+		name,
+		strings.Join(arg, " "),
+	)
 }
