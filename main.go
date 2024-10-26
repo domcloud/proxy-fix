@@ -21,7 +21,7 @@ func init() {
 	}
 
 	// No existing process found or not listening, start a new one
-	outPort, err := getFreePort()
+	outPort, err = getFreePort()
 	if err != nil {
 		panic("Can't get free port")
 	}
