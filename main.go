@@ -7,19 +7,24 @@ import (
 	"os"
 	"os/exec"
 	"strconv"
+	"strings"
 	"syscall"
 )
 
-var outPort int
+var outDial string
 
 func init() {
 	var err error
 	var pid int
 
-	outPort, pid, err = checkExistingProcess()
+	args := os.Args
+	bg := os.Getenv("NOHUP") == "1"
+	preferredDial := os.Getenv("TARGET")
+
+	outDial, pid, err = checkExistingProcess()
 	if err == nil {
-		if isPortListening(outPort) {
-			fmt.Printf("Process is already running on port %d\n", outPort)
+		if isPortListening(outDial) && outDial == preferredDial {
+			fmt.Printf("Process is already running on %d\n", outDial)
 			return
 		} else {
 			fmt.Printf("Killing stale process %d  \n", pid)
@@ -28,13 +33,14 @@ func init() {
 	}
 
 	// No existing process found or not listening, start a new one
-	outPort, err = getFreePort()
-	if err != nil {
-		panic("Can't get free port")
+	if preferredDial == "" {
+		outDial, err = getFreeDial()
+		if err != nil {
+			panic("Can't get free port")
+		}
+	} else {
+		outDial = preferredDial
 	}
-
-	args := os.Args
-	bg := os.Getenv("NOHUP") == "1"
 
 	// Check if there are additional arguments
 	if len(args) > 1 {
@@ -50,7 +56,9 @@ func init() {
 				Pgid:    0,
 			}
 			cmd.Env = os.Environ()
-			cmd.Env = append(cmd.Env, fmt.Sprintf("PORT=%d", outPort))
+			if strings.HasPrefix(outDial, LOCAL_PREFIX) {
+				cmd.Env = append(cmd.Env, fmt.Sprintf("PORT=%s", outDial[len(LOCAL_PREFIX):]))
+			}
 			err = cmd.Run()
 			if err != nil {
 				fmt.Printf("Error starting command: %v\n", err)
@@ -65,14 +73,16 @@ func init() {
 				fmt.Printf("invalid PID of 0")
 				os.Exit(1)
 			}
-			writePidPortFile(pid, outPort)
+			writePidPortFile(pid, outDial)
 			fmt.Printf("Started process %s with PID %d in background\n", args[1], pid)
 		} else {
 			cmd := exec.Command(args[1], args[2:]...)
 			cmd.Stdout = os.Stdout
 			cmd.Stderr = os.Stderr
 			cmd.Env = os.Environ()
-			cmd.Env = append(cmd.Env, fmt.Sprintf("PORT=%d", outPort))
+			if strings.HasPrefix(outDial, LOCAL_PREFIX) {
+				cmd.Env = append(cmd.Env, fmt.Sprintf("PORT=%s", outDial[len(LOCAL_PREFIX):]))
+			}
 
 			// Start the specified command
 			err := cmd.Start()
@@ -100,7 +110,7 @@ func main() {
 
 func startProxy(address string) error {
 	proxy := Proxy{
-		DialTarget: fmt.Sprintf("localhost:%d", outPort),
+		DialTarget: outDial,
 	}
 	listener, err := net.Listen("tcp", address)
 	if err != nil {
