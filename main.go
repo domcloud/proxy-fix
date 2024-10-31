@@ -12,10 +12,14 @@ import (
 )
 
 var outDial string
+var pid int
 
 func init() {
+	initProcess()
+}
+
+func initProcess() {
 	var err error
-	var pid int
 
 	args := os.Args
 	bg := os.Getenv("NOHUP") == "1"
@@ -24,7 +28,7 @@ func init() {
 	outDial, pid, err = checkExistingProcess()
 	if err == nil {
 		if isPortListening(outDial) && outDial == preferredDial {
-			fmt.Printf("Process is already running on %d\n", outDial)
+			fmt.Printf("Process is already running on %s\n", outDial)
 			return
 		} else {
 			fmt.Printf("Killing stale process %d  \n", pid)

@@ -29,10 +29,17 @@ func (proxy *Proxy) handleConnection(clientConn net.Conn) {
 
 	// Filter invalid headers
 	filterInvalidHeaders(request.Header)
+	oldpid := pid
 
 	// Connect to the destination server
+retryonce:
 	destConn, err := proxy.handleDial()
 	if err != nil {
+		if !proxy.connected && oldpid == pid && !processExists(pid) {
+			fmt.Println("Process died, reinit")
+			initProcess()
+			goto retryonce
+		}
 		return
 	}
 	defer destConn.Close()
@@ -75,7 +82,7 @@ func handleHTTP(destConn net.Conn, clientConn net.Conn) {
 func (proxy *Proxy) handleDial() (destConn net.Conn, err error) {
 	retries := 0
 retry:
-	destConn, err = net.Dial("tcp", proxy.DialTarget)
+	destConn, err = net.DialTimeout("tcp", proxy.DialTarget, time.Second)
 	if err != nil {
 		if retries < MAX_RETRY && !proxy.connected {
 			retries += 1
@@ -84,6 +91,8 @@ retry:
 			goto retry
 		}
 		fmt.Printf("Error connecting to destination: %v\n", err)
+		proxy.connected = false
+		return
 	}
 	proxy.connected = true
 	return

@@ -10,8 +10,8 @@ Download from releases or build it and place it to `~/.local/bin/proxfix`.
 
 ```bash
 PROXYFIX=proxy-fix-linux-$( [ "$(uname -m)" = "aarch64" ] && echo "arm64" || echo "amd64" )
-wget https://github.com/domcloud/proxy-fix/releases/download/v0.2.4/$PROXYFIX.tar.gz
-tar -xf $PROXYFIX.tar.gz && mv $PROXYFIX /usr/local/bin/proxfix && rm -rf $PROXYFIX*
+wget https://github.com/domcloud/proxy-fix/releases/download/v0.2.5/$PROXYFIX.tar.gz
+tar -xf $PROXYFIX.tar.gz && mv -f $PROXYFIX /usr/local/bin/proxfix && rm -rf $PROXYFIX*
 ```
 
 ## Usage
